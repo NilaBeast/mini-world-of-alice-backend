@@ -18,7 +18,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173", // Vite frontend
-      "http://localhost:5000", // CRA frontend
+      "https://mini-world-of-alice.vercel.app", // CRA frontend
     ],
     credentials: true,
   })
