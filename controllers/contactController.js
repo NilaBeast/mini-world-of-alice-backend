@@ -36,10 +36,16 @@ exports.sendContactMail = async (req, res) => {
       message: "Message sent successfully",
     });
   } catch (error) {
-    console.error("❌ BREVO API ERROR:", error);
+  console.error("❌ BREVO API ERROR FULL OBJECT:", error);
+  console.error("❌ BREVO API ERROR MESSAGE:", error?.message);
+  console.error("❌ BREVO API ERROR BODY:", error?.response?.body);
+  console.error("❌ BREVO API ERROR RESPONSE:", error?.response);
 
-    return res.status(500).json({
-      message: "Email service unavailable",
-    });
-  }
+  return res.status(500).json({
+    message: error?.response?.body?.message ||
+             error?.message ||
+             "Email service unavailable",
+  });
+}
+
 };
