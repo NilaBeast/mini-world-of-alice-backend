@@ -1,14 +1,15 @@
 const nodemailer = require("nodemailer");
 
+// ✅ Brevo SMTP Transporter (Production-safe)
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_PASS,
   },
-  connectionTimeout: 10000, // 🔥 prevent hanging
+  connectionTimeout: 10000,
   greetingTimeout: 10000,
   socketTimeout: 10000,
 });
@@ -18,15 +19,14 @@ exports.sendContactMail = async (req, res) => {
     const { name, email, service, message } = req.body;
 
     if (!name || !email || !message) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({
+        message: "All fields are required",
+      });
     }
 
-    // 🔥 Verify INSIDE request (safer on Render)
-    await transporter.verify();
-
     await transporter.sendMail({
-      from: `"Mini World of Alice" <${process.env.MAIL_USER}>`,
-      to: process.env.MAIL_USER,
+      from: `"Mini World of Alice" <${process.env.BREVO_USER}>`,
+      to: process.env.BREVO_USER,
       replyTo: email,
       subject: `New Contact Request from ${name}`,
       html: `
@@ -44,10 +44,10 @@ exports.sendContactMail = async (req, res) => {
       message: "Message sent successfully",
     });
   } catch (error) {
-    console.error("❌ EMAIL ERROR:", error.message);
+    console.error("❌ BREVO EMAIL ERROR:", error);
 
     return res.status(500).json({
-      message: error.message || "Email service unavailable",
+      message: "Email service unavailable",
     });
   }
 };
