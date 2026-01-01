@@ -1,23 +1,16 @@
 const nodemailer = require("nodemailer");
 
-// ✅ Create transporter ONCE (outside handler)
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 465,
-  secure: true, // REQUIRED for Gmail
+  secure: true,
   auth: {
     user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS, // Gmail App Password
+    pass: process.env.MAIL_PASS,
   },
-});
-
-// ✅ Verify transporter on server start (IMPORTANT)
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ Mail transporter error:", error);
-  } else {
-    console.log("✅ Mail server is ready to send emails");
-  }
+  connectionTimeout: 10000, // 🔥 prevent hanging
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
 });
 
 exports.sendContactMail = async (req, res) => {
@@ -27,6 +20,9 @@ exports.sendContactMail = async (req, res) => {
     if (!name || !email || !message) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
+    // 🔥 Verify INSIDE request (safer on Render)
+    await transporter.verify();
 
     await transporter.sendMail({
       from: `"Mini World of Alice" <${process.env.MAIL_USER}>`,
@@ -48,9 +44,10 @@ exports.sendContactMail = async (req, res) => {
       message: "Message sent successfully",
     });
   } catch (error) {
-    console.error("❌ Email send failed:", error);
+    console.error("❌ EMAIL ERROR:", error.message);
+
     return res.status(500).json({
-      message: "Failed to send email",
+      message: error.message || "Email service unavailable",
     });
   }
 };
