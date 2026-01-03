@@ -20,36 +20,50 @@ exports.createProduct = async (req, res) => {
     const { title, description } = req.body;
 
     if (!title || !description) {
-      return res.status(400).json({ message: "Title and description required" });
+      return res.status(400).json({
+        message: "Title and description are required",
+      });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ message: "Product image is required" });
+    // 🔥 IMPORTANT: now using req.files (array)
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({
+        message: "At least one product image is required",
+      });
     }
 
-    // 🔥 Convert image buffer → base64 (same as profile)
-    const b64 = Buffer.from(req.file.buffer).toString("base64");
-    const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+    // 🔥 Upload ALL images to Cloudinary
+    const imageUploadPromises = req.files.map((file) => {
+      const b64 = Buffer.from(file.buffer).toString("base64");
+      const dataURI = `data:${file.mimetype};base64,${b64}`;
 
-    // 🔥 Upload to Cloudinary
-    const result = await cloudinary.uploader.upload(dataURI, {
-      folder: "products",
+      return cloudinary.uploader.upload(dataURI, {
+        folder: "products",
+      });
     });
 
+    const uploadResults = await Promise.all(imageUploadPromises);
+
+    // 🔥 Extract secure URLs
+    const imageUrls = uploadResults.map((r) => r.secure_url);
+
+    // 🔥 Create product
     const product = await Product.create({
       title,
       description,
-      image: result.secure_url, // ✅ permanent URL
-      createdBy: req.user._id,
+      images: imageUrls, // ✅ ARRAY
+      createdBy: req.user._id, // ✅ REQUIRED
     });
 
-    res.status(201).json(product);
+    return res.status(201).json(product);
   } catch (error) {
     console.error("CREATE PRODUCT ERROR:", error);
-    res.status(500).json({ message: "Failed to create product" });
+
+    return res.status(500).json({
+      message: error.message || "Failed to create product",
+    });
   }
 };
-
 // DELETE PRODUCT (ADMIN)
 exports.deleteProduct = async (req, res) => {
   try {
