@@ -15,8 +15,8 @@ const productSchema = new mongoose.Schema(
     },
 
     // 🔥 Cloudinary secure URL
-    image: {
-      type: String,
+    images: {
+      type: [String],
       required: [true, "Product image is required"],
     },
 

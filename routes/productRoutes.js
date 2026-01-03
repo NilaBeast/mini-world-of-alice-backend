@@ -17,7 +17,7 @@ router.get("/", getProducts);
 router.post(
   "/",
   protect,
-  upload.single("image"), // 🔥 SAME PATTERN AS PROFILE
+  upload.array("images", 5), // 🔥 SAME PATTERN AS PROFILE
   adminOnly,
   createProduct
 );
