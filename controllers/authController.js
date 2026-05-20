@@ -13,7 +13,7 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const userExists = await User.findOne({ where: { email } });
+    const userExists = await User.findOne({ email });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -27,12 +27,12 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       user: {
-        id: user.id,
+        _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role, // ✅ SEND ROLE
       },
-      token: generateToken(user.id),
+      token: generateToken(user._id),
     });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
@@ -44,17 +44,17 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ email });
 
     if (user && (await user.matchPassword(password))) {
       res.json({
         user: {
-          id: user.id,
+          _id: user._id,
           name: user.name,
           email: user.email,
           role: user.role, // ✅ SEND ROLE
         },
-        token: generateToken(user.id),
+        token: generateToken(user._id),
       });
     } else {
       res.status(401).json({ message: "Invalid email or password" });

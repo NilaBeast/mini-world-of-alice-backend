@@ -1,32 +1,30 @@
-const { DataTypes, Model } = require("sequelize");
-const connectDB = require("../config/db");
+const mongoose = require("mongoose");
 
-const sequelize = connectDB.sequelize;
-
-class Product extends Model {}
-
-Product.init(
+const productSchema = new mongoose.Schema(
   {
-    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
-    mongoId: { type: DataTypes.STRING(24), unique: true, allowNull: true },
-    title: { type: DataTypes.STRING(200), allowNull: false },
-    description: { type: DataTypes.TEXT, allowNull: false },
-    images: { type: DataTypes.JSON, allowNull: false },
-    createdByUserId: {
-      type: DataTypes.INTEGER.UNSIGNED,
-      allowNull: false,
-      references: { model: "users", key: "id" },
-      onDelete: "RESTRICT",
-      onUpdate: "CASCADE",
+    title: {
+      type: String,
+      required: [true, "Product title is required"],
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: [true, "Product description is required"],
+      trim: true,
+    },
+    images: {
+      type: [String],
+      required: [true, "Product image is required"],
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
   },
-  {
-    sequelize,
-    modelName: "Product",
-    tableName: "products",
-    timestamps: true,
-    indexes: [{ fields: ["created_at"] }],
-  }
+  { timestamps: true }
 );
 
-module.exports = Product;
+productSchema.index({ createdAt: -1 });
+
+module.exports = mongoose.model("Product", productSchema);

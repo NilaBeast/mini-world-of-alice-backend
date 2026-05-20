@@ -10,5 +10,3 @@ router.put("/:id", protect, adminOnly, updateShort);
 router.delete("/:id", protect, adminOnly, deleteShort);
 
 module.exports = router;
-
-//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTNlMDJhMDMxYjM0YmJjMTQ0YTc0MCIsImlhdCI6MTc2NzEwNDcwMywiZXhwIjoxNzY5Njk2NzAzfQ.HqkbnWyutWD0UrsV4CknTVogLZ3NK7lHpdByyBLgwjM//

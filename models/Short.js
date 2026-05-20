@@ -1,24 +1,11 @@
-const { DataTypes, Model } = require("sequelize");
-const connectDB = require("../config/db");
+const mongoose = require("mongoose");
 
-const sequelize = connectDB.sequelize;
-
-class Short extends Model {}
-
-Short.init(
+const shortSchema = new mongoose.Schema(
   {
-    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
-    mongoId: { type: DataTypes.STRING(24), unique: true, allowNull: true },
-    title: { type: DataTypes.STRING(200), allowNull: true },
-    youtubeId: { type: DataTypes.STRING(32), allowNull: false },
+    title: { type: String, default: "" },
+    youtubeId: { type: String, required: true },
   },
-  {
-    sequelize,
-    modelName: "Short",
-    tableName: "shorts",
-    timestamps: true,
-    indexes: [{ fields: ["created_at"] }],
-  }
+  { timestamps: true }
 );
 
-module.exports = Short;
+module.exports = mongoose.model("Short", shortSchema);

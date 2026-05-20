@@ -1,35 +1,11 @@
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
 
-const normalizeImages = (value) => {
-  const clean = (arr) =>
-    arr
-      .map((x) => (typeof x === "string" ? x.trim() : ""))
-      .filter((x) => x.length > 0);
-
-  if (Array.isArray(value)) return clean(value);
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (Array.isArray(parsed)) return clean(parsed);
-    } catch {}
-    return clean([trimmed]);
-  }
-  return [];
-};
-
-const toPublicProduct = (product) => {
-  const data = typeof product?.toJSON === "function" ? product.toJSON() : product;
-  return { ...data, images: normalizeImages(data?.images) };
-};
-
 // GET ALL PRODUCTS
 exports.getProducts = async (req, res) => {
   try {
-    const products = await Product.findAll({ order: [["createdAt", "DESC"]] });
-    res.json(products.map(toPublicProduct));
+    const products = await Product.find().sort({ createdAt: -1 });
+    res.json(products);
   } catch (error) {
     console.error("GET PRODUCTS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch products" });
@@ -76,10 +52,10 @@ exports.createProduct = async (req, res) => {
       title,
       description,
       images: imageUrls, // ✅ ARRAY
-      createdByUserId: req.user.id, // ✅ REQUIRED
+      createdBy: req.user._id, // ✅ REQUIRED
     });
 
-    return res.status(201).json(toPublicProduct(product));
+    return res.status(201).json(product);
   } catch (error) {
     console.error("CREATE PRODUCT ERROR:", error);
 
@@ -92,7 +68,7 @@ exports.createProduct = async (req, res) => {
 // UPDATE PRODUCT (ADMIN)
 exports.updateProduct = async (req, res) => {
   try {
-    const product = await Product.findByPk(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
@@ -111,16 +87,22 @@ exports.updateProduct = async (req, res) => {
       const uploadResults = await Promise.all(imageUploadPromises);
       nextImages = uploadResults.map((r) => r.secure_url);
     } else if (req.body.images) {
-      nextImages = normalizeImages(req.body.images);
+      if (Array.isArray(req.body.images)) {
+        nextImages = req.body.images;
+      } else if (typeof req.body.images === "string") {
+        try {
+          const parsed = JSON.parse(req.body.images);
+          if (Array.isArray(parsed)) nextImages = parsed;
+        } catch {}
+      }
     }
 
-    await product.update({
-      title: nextTitle,
-      description: nextDescription,
-      images: normalizeImages(nextImages),
-    });
+    product.title = nextTitle;
+    product.description = nextDescription;
+    product.images = nextImages;
+    await product.save();
 
-    return res.json(toPublicProduct(product));
+    return res.json(product);
   } catch (error) {
     console.error("UPDATE PRODUCT ERROR:", error);
     return res.status(500).json({ message: "Failed to update product" });
@@ -130,14 +112,14 @@ exports.updateProduct = async (req, res) => {
 // DELETE PRODUCT (ADMIN)
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByPk(req.params.id);
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
     // Optional: delete image from cloudinary later
-    await product.destroy();
+    await product.deleteOne();
 
     res.json({ success: true });
   } catch (error) {
