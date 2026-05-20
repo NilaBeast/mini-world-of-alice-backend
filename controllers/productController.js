@@ -1,11 +1,35 @@
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
 
+const normalizeImages = (value) => {
+  const clean = (arr) =>
+    arr
+      .map((x) => (typeof x === "string" ? x.trim() : ""))
+      .filter((x) => x.length > 0);
+
+  if (Array.isArray(value)) return clean(value);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) return clean(parsed);
+    } catch {}
+    return clean([trimmed]);
+  }
+  return [];
+};
+
+const toPublicProduct = (product) => {
+  const data = typeof product?.toJSON === "function" ? product.toJSON() : product;
+  return { ...data, images: normalizeImages(data?.images) };
+};
+
 // GET ALL PRODUCTS
 exports.getProducts = async (req, res) => {
   try {
     const products = await Product.findAll({ order: [["createdAt", "DESC"]] });
-    res.json(products);
+    res.json(products.map(toPublicProduct));
   } catch (error) {
     console.error("GET PRODUCTS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch products" });
@@ -55,7 +79,7 @@ exports.createProduct = async (req, res) => {
       createdByUserId: req.user.id, // ✅ REQUIRED
     });
 
-    return res.status(201).json(product);
+    return res.status(201).json(toPublicProduct(product));
   } catch (error) {
     console.error("CREATE PRODUCT ERROR:", error);
 
@@ -87,23 +111,16 @@ exports.updateProduct = async (req, res) => {
       const uploadResults = await Promise.all(imageUploadPromises);
       nextImages = uploadResults.map((r) => r.secure_url);
     } else if (req.body.images) {
-      if (Array.isArray(req.body.images)) {
-        nextImages = req.body.images;
-      } else if (typeof req.body.images === "string") {
-        try {
-          const parsed = JSON.parse(req.body.images);
-          if (Array.isArray(parsed)) nextImages = parsed;
-        } catch {}
-      }
+      nextImages = normalizeImages(req.body.images);
     }
 
     await product.update({
       title: nextTitle,
       description: nextDescription,
-      images: nextImages,
+      images: normalizeImages(nextImages),
     });
 
-    return res.json(product);
+    return res.json(toPublicProduct(product));
   } catch (error) {
     console.error("UPDATE PRODUCT ERROR:", error);
     return res.status(500).json({ message: "Failed to update product" });
