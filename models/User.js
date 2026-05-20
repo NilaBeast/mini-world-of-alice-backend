@@ -1,28 +1,46 @@
-const mongoose = require("mongoose");
+const { DataTypes, Model } = require("sequelize");
 const bcrypt = require("bcryptjs");
+const connectDB = require("../config/db");
 
-const userSchema = new mongoose.Schema({
-     name: String,
-    email: { type: String, unique: true },
-    password: String,
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user"
-    }
-},
-{timestamps: true}
-);
+const sequelize = connectDB.sequelize;
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return ;
-  this.password = await bcrypt.hash(this.password, 10);
-  
-});
-
-// Match password
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+class User extends Model {
+  async matchPassword(enteredPassword) {
+    return bcrypt.compare(enteredPassword, this.password);
+  }
 }
 
-module.exports = mongoose.model("User", userSchema);
+User.init(
+  {
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    mongoId: { type: DataTypes.STRING(24), unique: true, allowNull: true },
+    name: { type: DataTypes.STRING(120), allowNull: false },
+    email: { type: DataTypes.STRING(191), unique: true, allowNull: false },
+    password: { type: DataTypes.STRING(255), allowNull: false },
+    role: {
+      type: DataTypes.ENUM("user", "admin"),
+      allowNull: false,
+      defaultValue: "user",
+    },
+  },
+  {
+    sequelize,
+    modelName: "User",
+    tableName: "users",
+    timestamps: true,
+    hooks: {
+      async beforeCreate(user) {
+        if (!user.password) return;
+        if (typeof user.password === "string" && user.password.startsWith("$2")) return;
+        user.password = await bcrypt.hash(user.password, 10);
+      },
+      async beforeUpdate(user) {
+        if (!user.changed("password")) return;
+        if (typeof user.password === "string" && user.password.startsWith("$2")) return;
+        user.password = await bcrypt.hash(user.password, 10);
+      },
+    },
+  }
+);
+
+module.exports = User;

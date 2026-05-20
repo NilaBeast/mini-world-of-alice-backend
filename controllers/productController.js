@@ -4,7 +4,7 @@ const cloudinary = require("../config/cloudinary");
 // GET ALL PRODUCTS
 exports.getProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const products = await Product.findAll({ order: [["createdAt", "DESC"]] });
     res.json(products);
   } catch (error) {
     console.error("GET PRODUCTS ERROR:", error);
@@ -52,7 +52,7 @@ exports.createProduct = async (req, res) => {
       title,
       description,
       images: imageUrls, // ✅ ARRAY
-      createdBy: req.user._id, // ✅ REQUIRED
+      createdByUserId: req.user.id, // ✅ REQUIRED
     });
 
     return res.status(201).json(product);
@@ -64,17 +64,63 @@ exports.createProduct = async (req, res) => {
     });
   }
 };
+
+// UPDATE PRODUCT (ADMIN)
+exports.updateProduct = async (req, res) => {
+  try {
+    const product = await Product.findByPk(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const nextTitle = typeof req.body.title === "string" ? req.body.title : product.title;
+    const nextDescription =
+      typeof req.body.description === "string" ? req.body.description : product.description;
+
+    let nextImages = product.images;
+    if (req.files && req.files.length > 0) {
+      const imageUploadPromises = req.files.map((file) => {
+        const b64 = Buffer.from(file.buffer).toString("base64");
+        const dataURI = `data:${file.mimetype};base64,${b64}`;
+        return cloudinary.uploader.upload(dataURI, { folder: "products" });
+      });
+      const uploadResults = await Promise.all(imageUploadPromises);
+      nextImages = uploadResults.map((r) => r.secure_url);
+    } else if (req.body.images) {
+      if (Array.isArray(req.body.images)) {
+        nextImages = req.body.images;
+      } else if (typeof req.body.images === "string") {
+        try {
+          const parsed = JSON.parse(req.body.images);
+          if (Array.isArray(parsed)) nextImages = parsed;
+        } catch {}
+      }
+    }
+
+    await product.update({
+      title: nextTitle,
+      description: nextDescription,
+      images: nextImages,
+    });
+
+    return res.json(product);
+  } catch (error) {
+    console.error("UPDATE PRODUCT ERROR:", error);
+    return res.status(500).json({ message: "Failed to update product" });
+  }
+};
+
 // DELETE PRODUCT (ADMIN)
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findByPk(req.params.id);
 
     if (!product) {
       return res.status(404).json({ message: "Product not found" });
     }
 
     // Optional: delete image from cloudinary later
-    await product.deleteOne();
+    await product.destroy();
 
     res.json({ success: true });
   } catch (error) {

@@ -1,38 +1,32 @@
-const mongoose = require("mongoose");
+const { DataTypes, Model } = require("sequelize");
+const connectDB = require("../config/db");
 
-const productSchema = new mongoose.Schema(
+const sequelize = connectDB.sequelize;
+
+class Product extends Model {}
+
+Product.init(
   {
-    title: {
-      type: String,
-      required: [true, "Product title is required"],
-      trim: true,
-    },
-
-    description: {
-      type: String,
-      required: [true, "Product description is required"],
-      trim: true,
-    },
-
-    // 🔥 Cloudinary secure URL
-    images: {
-      type: [String],
-      required: [true, "Product image is required"],
-    },
-
-    // Optional but very useful
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    id: { type: DataTypes.INTEGER.UNSIGNED, autoIncrement: true, primaryKey: true },
+    mongoId: { type: DataTypes.STRING(24), unique: true, allowNull: true },
+    title: { type: DataTypes.STRING(200), allowNull: false },
+    description: { type: DataTypes.TEXT, allowNull: false },
+    images: { type: DataTypes.JSON, allowNull: false },
+    createdByUserId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      references: { model: "users", key: "id" },
+      onDelete: "RESTRICT",
+      onUpdate: "CASCADE",
     },
   },
   {
+    sequelize,
+    modelName: "Product",
+    tableName: "products",
     timestamps: true,
+    indexes: [{ fields: ["created_at"] }],
   }
 );
 
-// 🔥 Sort newest products first automatically
-productSchema.index({ createdAt: -1 });
-
-module.exports = mongoose.model("Product", productSchema);
+module.exports = Product;

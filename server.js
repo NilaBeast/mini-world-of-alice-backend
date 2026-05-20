@@ -1,16 +1,17 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const connectDB = require("./config/db");
 const cors = require("cors");
 const path = require("path");
+
+dotenv.config();
+
+const connectDB = require("./config/db");
+const { migrateMongoToMysql } = require("./scripts/migrate-mongo-to-mysql");
 
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const shortRoutes = require("./routes/shortRoutes");
 const contactRoutes = require("./routes/contactRoutes");
-
-dotenv.config();
-connectDB();
 
 const app = express();
 
@@ -37,6 +38,42 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000; // ✅ backend standard
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server is running on port ${PORT}`);
+const shouldMigrateOnStart =
+  String(process.env.MIGRATE_ON_START || "").toLowerCase() === "true" ||
+  String(process.env.MIGRATE_ON_START || "") === "1";
+
+const start = async () => {
+  await connectDB();
+
+  if (shouldMigrateOnStart) {
+    try {
+      const result = await migrateMongoToMysql({
+        sequelize: connectDB.sequelize,
+        mongoUri: process.env.MONGO_URI,
+      });
+      const repair = result?.repair;
+      const repairMsg =
+        repair && typeof repair.repaired === "number"
+          ? ` repairImages=${repair.repaired}/${repair.inspected}`
+          : "";
+      if (result?.skipped) {
+        console.log(`Migration skipped (already completed).${repairMsg}`);
+      } else {
+        console.log(
+          `Migration completed: users=${result.usersUpserted} products=${result.productsUpserted} shorts=${result.shortsUpserted}.${repairMsg}`
+        );
+      }
+    } catch (err) {
+      console.error("Migration failed (server will still start):", err?.message || err);
+    }
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+};
+
+start().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });

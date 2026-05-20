@@ -5,6 +5,7 @@ const upload = require("../middleware/uploadMiddleware");
 const {
   getProducts,
   createProduct,
+  updateProduct,
   deleteProduct,
 } = require("../controllers/productController");
 
@@ -22,6 +23,13 @@ router.post(
   createProduct
 );
 
+router.put(
+  "/:id",
+  protect,
+  upload.array("images", 5),
+  adminOnly,
+  updateProduct
+);
 router.delete("/:id", protect, adminOnly, deleteProduct);
 
 module.exports = router;
