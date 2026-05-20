@@ -14,7 +14,21 @@ const productSchema = new mongoose.Schema(
     },
     images: {
       type: [String],
-      required: [true, "Product image is required"],
+      required: [
+        function () {
+          return !this.image;
+        },
+        "Product image is required",
+      ],
+    },
+    image: {
+      type: String,
+      required: [
+        function () {
+          return !this.images || this.images.length === 0;
+        },
+        "Product image is required",
+      ],
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

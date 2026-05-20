@@ -1,11 +1,25 @@
 const Product = require("../models/Product");
 const cloudinary = require("../config/cloudinary");
 
+const normalizeImages = (value) => {
+  const out = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  return out
+    .map((x) => (typeof x === "string" ? x.trim() : ""))
+    .filter((x) => x.length > 0);
+};
+
+const toPublicProduct = (p) => {
+  const data = typeof p?.toObject === "function" ? p.toObject() : p;
+  const images = normalizeImages(data?.images);
+  const legacy = normalizeImages(data?.image);
+  return { ...data, images: images.length > 0 ? images : legacy };
+};
+
 // GET ALL PRODUCTS
 exports.getProducts = async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
-    res.json(products);
+    res.json(products.map(toPublicProduct));
   } catch (error) {
     console.error("GET PRODUCTS ERROR:", error);
     res.status(500).json({ message: "Failed to fetch products" });

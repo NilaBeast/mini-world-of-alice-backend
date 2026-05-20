@@ -11,16 +11,22 @@ const generateToken = (id) => {
 // REGISTER
 exports.register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const name = typeof req.body.name === "string" ? req.body.name : req.body.username;
+    const email = typeof req.body.email === "string" ? req.body.email : "";
+    const password = typeof req.body.password === "string" ? req.body.password : "";
 
-    const userExists = await User.findOne({ email });
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "Name, email and password are required" });
+    }
+
+    const userExists = await User.findOne({ email: email.toLowerCase() });
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
 
     const user = await User.create({
       name,
-      email,
+      email: email.toLowerCase(),
       password,
       role: "user", // ✅ default role
     });
@@ -35,16 +41,22 @@ exports.register = async (req, res) => {
       token: generateToken(user._id),
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("REGISTER ERROR:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
 // LOGIN
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = typeof req.body.email === "string" ? req.body.email : "";
+    const password = typeof req.body.password === "string" ? req.body.password : "";
 
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
 
     if (user && (await user.matchPassword(password))) {
       res.json({
@@ -60,6 +72,7 @@ exports.login = async (req, res) => {
       res.status(401).json({ message: "Invalid email or password" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("LOGIN ERROR:", error);
+    res.status(500).json({ message: error.message || "Server error" });
   }
 };
